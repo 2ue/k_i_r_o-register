@@ -14,11 +14,13 @@
 """
 from .base import MailProvider
 from .shiromail import ShiroMailProvider
+from .skymail import SkyMailProvider
 from .yydsmail import YydsMailProvider
 
 PROVIDERS: dict[str, type[MailProvider]] = {
     "shiromail": ShiroMailProvider,
     "yydsmail": YydsMailProvider,
+    "skymail": SkyMailProvider,
 }
 
 

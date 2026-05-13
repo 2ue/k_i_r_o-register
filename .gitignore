@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 *.pyo
+.venv/
 
 # 敏感配置
 kiro_config.json
@@ -13,6 +14,8 @@ kiro_config.json
 
 # 临时测试
 test_*.py
+!tests/
+!tests/test_*.py
 capture_api.py
 captured_requests.json
 

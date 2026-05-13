@@ -1242,16 +1242,46 @@ class App(tk.Tk):
 
         row2 = ttk.Frame(mail_frame)
         row2.pack(fill="x", pady=2)
-        ttk.Label(row2, text="API Key:", width=8).pack(side="left")
+        self._reg_mail_key_label = ttk.Label(row2, text="API Key:", width=8)
+        self._reg_mail_key_label.pack(side="left")
         self._reg_mail_key = tk.StringVar(value=cfg.get("mail_key", ""))
+        self._reg_skymail_admin_email = tk.StringVar(value=cfg.get("skymail_admin_email", ""))
+        self._reg_skymail_admin_password = tk.StringVar(value=cfg.get("skymail_admin_password", ""))
         self._reg_mail_key_entry = ttk.Entry(row2, textvariable=self._reg_mail_key, width=45, show="*")
         self._reg_mail_key_entry.pack(side="left", padx=4)
+        self._reg_mail_hint = ttk.Label(row2, text="", foreground="#8b949e")
+        self._reg_mail_hint.pack(side="left", padx=4)
+
+        self._reg_skymail_password_row = ttk.Frame(mail_frame)
+        self._reg_skymail_password_row.pack(fill="x", pady=2)
+        ttk.Label(self._reg_skymail_password_row, text="密码:", width=8).pack(side="left")
+        ttk.Entry(
+            self._reg_skymail_password_row,
+            textvariable=self._reg_skymail_admin_password,
+            width=45,
+            show="*",
+        ).pack(side="left", padx=4)
 
         def _on_provider_change(*_):
             display = self._reg_mail_provider.get()
             name = self._reg_provider_name_map.get(display, "shiromail")
+            self._reg_mail_key_entry.configure(state="normal")
+            self._reg_domain_combo.configure(state="readonly")
+            if name == "skymail":
+                self._reg_mail_key_label.configure(text="账号:")
+                self._reg_mail_key_entry.configure(textvariable=self._reg_skymail_admin_email, show="")
+                self._reg_mail_hint.configure(text="SkyMail 管理员邮箱；域名需手动填写")
+                self._reg_domain_combo.configure(state="normal")
+                if not self._reg_skymail_password_row.winfo_manager():
+                    self._reg_skymail_password_row.pack(fill="x", pady=2)
+                if not self._reg_mail_url.get().strip():
+                    self._reg_mail_url.set("https://skymail.ink")
+            else:
+                self._reg_mail_key_label.configure(text="API Key:")
+                self._reg_mail_key_entry.configure(textvariable=self._reg_mail_key, show="*")
+                self._reg_mail_hint.configure(text="")
+                self._reg_skymail_password_row.pack_forget()
             if name == "shiromail":
-                self._reg_mail_key_entry.configure(state="normal")
                 self._reg_domain_combo.configure(state="readonly")
         self._reg_mail_provider.trace_add("write", _on_provider_change)
         _on_provider_change()
@@ -1289,11 +1319,14 @@ class App(tk.Tk):
                 domain_val = self._reg_domain_map[domain_val]
             provider_display = self._reg_mail_provider.get()
             provider_name = self._reg_provider_name_map.get(provider_display, "shiromail")
+            mail_key = "" if provider_name == "skymail" else self._reg_mail_key.get().strip()
             save_config({
                 "mail_provider": provider_name,
                 "mail_url": self._reg_mail_url.get().strip(),
-                "mail_key": self._reg_mail_key.get().strip(),
+                "mail_key": mail_key,
                 "mail_domain_id": domain_val,
+                "skymail_admin_email": self._reg_skymail_admin_email.get().strip(),
+                "skymail_admin_password": self._reg_skymail_admin_password.get().strip(),
                 "cdk_code": self._reg_cdk_code.get().strip(),
                 "yescaptcha_key": self._reg_yescaptcha_key.get().strip(),
                 "roxy_api_key": self._reg_roxy_key.get().strip(),
@@ -1302,6 +1335,8 @@ class App(tk.Tk):
         self._reg_mail_provider.trace_add("write", _save_mail_config)
         self._reg_mail_url.trace_add("write", _save_mail_config)
         self._reg_mail_key.trace_add("write", _save_mail_config)
+        self._reg_skymail_admin_email.trace_add("write", _save_mail_config)
+        self._reg_skymail_admin_password.trace_add("write", _save_mail_config)
         self._reg_mail_domain_id.trace_add("write", _save_mail_config)
         self._reg_cdk_code.trace_add("write", _save_mail_config)
         self._reg_yescaptcha_key.trace_add("write", _save_mail_config)
@@ -1610,6 +1645,7 @@ class App(tk.Tk):
         from mail_providers import get_provider
         base_url = self._reg_mail_url.get().strip().rstrip("/")
         api_key = self._reg_mail_key.get().strip()
+        skymail_admin_email = self._reg_skymail_admin_email.get().strip()
         provider_display = self._reg_mail_provider.get()
         provider_name = self._reg_provider_name_map.get(provider_display, "shiromail")
         if not base_url:
@@ -1619,6 +1655,20 @@ class App(tk.Tk):
         if provider_name == "shiromail" and not api_key:
             from tkinter import messagebox
             messagebox.showwarning("提示", "请先填写 API Key")
+            return
+        if provider_name == "skymail":
+            self._reg_domain_combo.configure(state="normal")
+            current = self._reg_mail_domain_id.get().strip()
+            if current:
+                self._reg_domain_combo["values"] = [current]
+                self._reg_domain_map = {current: current}
+                return
+            if not skymail_admin_email:
+                from tkinter import messagebox
+                messagebox.showwarning("提示", "SkyMail 请手动填写域名")
+                return
+            from tkinter import messagebox
+            messagebox.showwarning("提示", "SkyMail 暂不支持自动获取域名，请手动填写域名")
             return
         try:
             kwargs = {"base_url": base_url}
@@ -1747,6 +1797,8 @@ class App(tk.Tk):
         from mail_providers import get_provider
         mail_url = self._reg_mail_url.get().strip() or None
         mail_key = self._reg_mail_key.get().strip() or None
+        skymail_admin_email = self._reg_skymail_admin_email.get().strip()
+        skymail_admin_password = self._reg_skymail_admin_password.get().strip()
         mail_domain_val = self._reg_mail_domain_id.get().strip() or None
         if mail_domain_val and hasattr(self, '_reg_domain_map') and mail_domain_val in self._reg_domain_map:
             mail_domain_id = self._reg_domain_map[mail_domain_val]
@@ -1758,6 +1810,19 @@ class App(tk.Tk):
         provider_kwargs = {"base_url": mail_url or ""}
         if provider_name == "shiromail":
             provider_kwargs["api_key"] = mail_key or ""
+            provider_kwargs["domain_id"] = mail_domain_id
+        elif provider_name == "skymail":
+            if not skymail_admin_email:
+                self._reg_log("未填写 SkyMail 管理员邮箱", "err")
+                return None
+            if not skymail_admin_password:
+                self._reg_log("未填写 SkyMail 管理员密码", "err")
+                return None
+            if not mail_domain_id:
+                self._reg_log("未填写 SkyMail 邮箱域名", "err")
+                return None
+            provider_kwargs["admin_email"] = skymail_admin_email
+            provider_kwargs["admin_password"] = skymail_admin_password
             provider_kwargs["domain_id"] = mail_domain_id
         mail_instance = get_provider(provider_name, **provider_kwargs)
 

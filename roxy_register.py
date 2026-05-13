@@ -285,7 +285,11 @@ async def register_with_roxy(
     s = _requests.Session()
     s.verify = False
 
-    if mail_provider_instance and not isinstance(mail_provider_instance, _RequestsMailClient):
+    if (
+        mail_provider_instance
+        and not isinstance(mail_provider_instance, _RequestsMailClient)
+        and getattr(mail_provider_instance, "name", "") == "shiromail"
+    ):
         mail = _RequestsMailClient(
             base_url=getattr(mail_provider_instance, 'base_url', mail_url or ""),
             api_key=getattr(mail_provider_instance, 'api_key', mail_key or ""),
