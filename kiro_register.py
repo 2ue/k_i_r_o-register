@@ -722,10 +722,15 @@ async def register(headless=True, auto_login=True, skip_onboard=True,
                             pass
                         await asyncio.sleep(3)
 
-                for _ in range(20):
+                for wait_idx in range(20):
                     if CallbackHandler.signin_callback_params:
                         break
+                    if wait_idx in (4, 9, 14):
+                        log(f"等待登录回调中 ({wait_idx + 1}/20)，当前页面: {page.url}", "info")
                     await asyncio.sleep(1)
+
+                if not CallbackHandler.signin_callback_params:
+                    log(f"登录回调未返回，当前页面: {page.url}", "warn")
 
             # 构造 OIDC authorize URL
             if CallbackHandler.signin_callback_params and not authorization_code:
@@ -744,12 +749,21 @@ async def register(headless=True, auto_login=True, skip_onboard=True,
                 await asyncio.sleep(3)
 
             # 等待到达 signin.aws 或 profile.aws
-            for _ in range(10):
+            reached_registration_page = False
+            for wait_idx in range(10):
                 if "signin.aws" in page.url or "profile.aws" in page.url:
+                    reached_registration_page = True
                     break
+                if wait_idx in (2, 5, 8):
+                    log(f"等待进入注册页面 ({wait_idx + 1}/10)，当前页面: {page.url}", "info")
                 await asyncio.sleep(2)
             await asyncio.sleep(2)
-            log("已到达注册页面", "ok")
+            if "signin.aws" in page.url or "profile.aws" in page.url:
+                reached_registration_page = True
+            if reached_registration_page:
+                log("已到达注册页面", "ok")
+            else:
+                log(f"尚未进入注册页面，继续检查当前状态: {page.url}", "warn")
 
             # 如果在 signin.aws，输入邮箱
             if "signin.aws" in page.url:

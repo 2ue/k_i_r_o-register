@@ -1287,17 +1287,59 @@ class App(tk.Tk):
         _on_provider_change()
 
         # EFunCard CDK 配置 (Pro试用订阅)
-        cdk_frame = ttk.LabelFrame(tab, text="EFunCard CDK (Pro试用订阅)", padding=(8, 4))
-        cdk_frame.pack(fill="x", pady=(0, 8))
+        pay_frame = ttk.LabelFrame(tab, text="Pro 试用支付配置", padding=(8, 4))
+        pay_frame.pack(fill="x", pady=(0, 8))
 
-        cdk_row = ttk.Frame(cdk_frame)
+        pay_row0 = ttk.Frame(pay_frame)
+        pay_row0.pack(fill="x", pady=2)
+        ttk.Label(pay_row0, text="支付方式:", width=8).pack(side="left")
+        self._reg_payment_mode = tk.StringVar(value=cfg.get("payment_mode", "efuncard"))
+        ttk.Radiobutton(pay_row0, text="EFunCard CDK", variable=self._reg_payment_mode,
+                        value="efuncard").pack(side="left", padx=(4, 12))
+        ttk.Radiobutton(pay_row0, text="988兑换卡", variable=self._reg_payment_mode,
+                        value="card988").pack(side="left", padx=(0, 12))
+        ttk.Radiobutton(pay_row0, text="自定义支付卡", variable=self._reg_payment_mode,
+                        value="custom_card").pack(side="left", padx=(0, 12))
+        ttk.Label(pay_row0, text="自定义卡每行: 卡号|有效期|CVV|姓名|地址|城市|州|邮编|国家",
+                  foreground="#8b949e").pack(side="left", padx=4)
+
+        cdk_row = ttk.Frame(pay_frame)
         cdk_row.pack(fill="x", pady=2)
+        self._reg_cdk_row = cdk_row
         ttk.Label(cdk_row, text="CDK码:", width=8).pack(side="left")
         self._reg_cdk_code = tk.StringVar(value=cfg.get("cdk_code", ""))
         ttk.Entry(cdk_row, textvariable=self._reg_cdk_code, width=45).pack(side="left", padx=4)
         ttk.Label(cdk_row, text="(格式: US-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX)", foreground="#8b949e").pack(side="left", padx=4)
 
-        yc_row = ttk.Frame(cdk_frame)
+        card988_row = ttk.Frame(pay_frame)
+        card988_row.pack(fill="x", pady=2)
+        self._reg_card988_row = card988_row
+        ttk.Label(card988_row, text="兑换Key:", width=8).pack(side="left")
+        self._reg_card988_keys_text = tk.Text(card988_row, width=70, height=3, wrap="none")
+        self._reg_card988_keys_text.pack(side="left", padx=4, fill="x", expand=True)
+        if cfg.get("card988_keys", ""):
+            self._reg_card988_keys_text.insert("1.0", cfg.get("card988_keys", ""))
+        ttk.Label(card988_row, text="一行一个 Key", foreground="#8b949e").pack(side="left", padx=4)
+
+        custom_card_row = ttk.Frame(pay_frame)
+        custom_card_row.pack(fill="x", pady=2)
+        self._reg_custom_card_row = custom_card_row
+        ttk.Label(custom_card_row, text="TXT文件:", width=8).pack(side="left")
+        self._reg_card_file = tk.StringVar(value=cfg.get("card_file", ""))
+        ttk.Entry(custom_card_row, textvariable=self._reg_card_file, width=45).pack(side="left", padx=4)
+        ttk.Button(custom_card_row, text="选择", width=6, command=self._reg_choose_card_file).pack(side="left", padx=2)
+        ttk.Label(custom_card_row, text="留空则使用下方多行输入", foreground="#8b949e").pack(side="left", padx=4)
+
+        custom_card_text_row = ttk.Frame(pay_frame)
+        custom_card_text_row.pack(fill="x", pady=2)
+        self._reg_custom_card_text_row = custom_card_text_row
+        ttk.Label(custom_card_text_row, text="卡信息:", width=8).pack(side="left", anchor="n")
+        self._reg_card_lines_text = tk.Text(custom_card_text_row, width=70, height=3, wrap="none")
+        self._reg_card_lines_text.pack(side="left", padx=4, fill="x", expand=True)
+        if cfg.get("card_lines", ""):
+            self._reg_card_lines_text.insert("1.0", cfg.get("card_lines", ""))
+
+        yc_row = ttk.Frame(pay_frame)
         yc_row.pack(fill="x", pady=2)
         ttk.Label(yc_row, text="YesCaptcha:", width=8).pack(side="left")
         self._reg_yescaptcha_key = tk.StringVar(value=cfg.get("yescaptcha_key", ""))
@@ -1305,7 +1347,7 @@ class App(tk.Tk):
         ttk.Label(yc_row, text="(API Key, 用于 hCaptcha 自动求解)", foreground="#8b949e").pack(side="left", padx=4)
 
         # RoxyBrowser 指纹浏览器配置
-        roxy_row = ttk.Frame(cdk_frame)
+        roxy_row = ttk.Frame(pay_frame)
         roxy_row.pack(fill="x", pady=2)
         ttk.Label(roxy_row, text="Roxy Key:", width=8).pack(side="left")
         self._reg_roxy_key = tk.StringVar(value=cfg.get("roxy_api_key", ""))
@@ -1327,20 +1369,53 @@ class App(tk.Tk):
                 "mail_domain_id": domain_val,
                 "skymail_admin_email": self._reg_skymail_admin_email.get().strip(),
                 "skymail_admin_password": self._reg_skymail_admin_password.get().strip(),
+                "payment_mode": self._reg_payment_mode.get(),
                 "cdk_code": self._reg_cdk_code.get().strip(),
+                "card988_keys": self._reg_card988_keys_text.get("1.0", "end").strip(),
+                "card_file": self._reg_card_file.get().strip(),
+                "card_lines": self._reg_card_lines_text.get("1.0", "end").strip(),
                 "yescaptcha_key": self._reg_yescaptcha_key.get().strip(),
                 "roxy_api_key": self._reg_roxy_key.get().strip(),
                 "auto_refresh_min": self._auto_refresh_min.get().strip(),
             })
+
+        def _on_payment_mode_change(*_):
+            mode = self._reg_payment_mode.get()
+            if mode == "custom_card":
+                self._reg_cdk_row.pack_forget()
+                self._reg_card988_row.pack_forget()
+                if not self._reg_custom_card_row.winfo_manager():
+                    self._reg_custom_card_row.pack(fill="x", pady=2, before=yc_row)
+                if not self._reg_custom_card_text_row.winfo_manager():
+                    self._reg_custom_card_text_row.pack(fill="x", pady=2, before=yc_row)
+            elif mode == "card988":
+                self._reg_cdk_row.pack_forget()
+                self._reg_custom_card_row.pack_forget()
+                self._reg_custom_card_text_row.pack_forget()
+                if not self._reg_card988_row.winfo_manager():
+                    self._reg_card988_row.pack(fill="x", pady=2, before=yc_row)
+            else:
+                if not self._reg_cdk_row.winfo_manager():
+                    self._reg_cdk_row.pack(fill="x", pady=2, before=self._reg_custom_card_row)
+                self._reg_card988_row.pack_forget()
+                self._reg_custom_card_row.pack_forget()
+                self._reg_custom_card_text_row.pack_forget()
+
         self._reg_mail_provider.trace_add("write", _save_mail_config)
         self._reg_mail_url.trace_add("write", _save_mail_config)
         self._reg_mail_key.trace_add("write", _save_mail_config)
         self._reg_skymail_admin_email.trace_add("write", _save_mail_config)
         self._reg_skymail_admin_password.trace_add("write", _save_mail_config)
         self._reg_mail_domain_id.trace_add("write", _save_mail_config)
+        self._reg_payment_mode.trace_add("write", _on_payment_mode_change)
+        self._reg_payment_mode.trace_add("write", _save_mail_config)
         self._reg_cdk_code.trace_add("write", _save_mail_config)
+        self._reg_card988_keys_text.bind("<KeyRelease>", _save_mail_config)
+        self._reg_card_file.trace_add("write", _save_mail_config)
+        self._reg_card_lines_text.bind("<KeyRelease>", _save_mail_config)
         self._reg_yescaptcha_key.trace_add("write", _save_mail_config)
         self._reg_roxy_key.trace_add("write", _save_mail_config)
+        _on_payment_mode_change()
 
         # Terminal output
         term_frame = ttk.Frame(tab)
@@ -1462,6 +1537,30 @@ class App(tk.Tk):
             except Exception:
                 pass
 
+        headless = self._reg_headless.get()
+        auto_login = self._reg_auto_login.get()
+        skip_onboard = self._reg_skip_onboard.get()
+        pro_trial = self._reg_pro_trial.get()
+        import_no_trial = self._reg_import_no_trial.get()
+        use_roxy = self._reg_use_roxy.get()
+        payment_mode = self._reg_payment_mode.get()
+        card_lines_cache = []
+        card988_keys_cache = []
+        if pro_trial and payment_mode == "custom_card":
+            try:
+                card_lines_cache = self._reg_load_card_lines()
+            except Exception as e:
+                messagebox.showerror("支付卡错误", f"读取支付卡信息失败: {e}")
+                return
+            if not card_lines_cache:
+                messagebox.showwarning("提示", "请选择支付卡 TXT 文件，或在卡信息中填写至少一行")
+                return
+        if pro_trial and payment_mode == "card988":
+            card988_keys_cache = self._reg_load_card988_keys()
+            if not card988_keys_cache:
+                messagebox.showwarning("提示", "请填写至少一个 988 兑换 Key")
+                return
+
         self._reg_running = True
         self._reg_cancel = False
         self._reg_term.delete("1.0", "end")
@@ -1470,13 +1569,6 @@ class App(tk.Tk):
         self._reg_stop_btn.configure(state="normal")
 
         self.after(100, self._reg_poll_queue)
-
-        headless = self._reg_headless.get()
-        auto_login = self._reg_auto_login.get()
-        skip_onboard = self._reg_skip_onboard.get()
-        pro_trial = self._reg_pro_trial.get()
-        import_no_trial = self._reg_import_no_trial.get()
-        use_roxy = self._reg_use_roxy.get()
 
         MAX_RETRY = 5
 
@@ -1530,7 +1622,7 @@ class App(tk.Tk):
                             self._reg_log(f"API 确认有 $0 试用资格", "ok")
             return "ok", ""
 
-        def _do_import_and_subscribe(result, loop):
+        def _do_import_and_subscribe(result, loop, allow_subscribe=True):
             """入库 + 订阅流程"""
             import random
             try:
@@ -1541,6 +1633,10 @@ class App(tk.Tk):
                 self._reg_queue.put((f"导入数据库失败: {e}", "err"))
             self.after(0, self._load_accounts_from_db)
 
+            if pro_trial and not allow_subscribe:
+                self._reg_queue.put(("账号无免费试用，仅入库，跳过 Pro 订阅", "warn"))
+                return
+
             if pro_trial and result.get("accessToken"):
                 self._reg_queue.put(("", "info"))
                 warmup = random.randint(30, 90)
@@ -1548,9 +1644,26 @@ class App(tk.Tk):
                 time.sleep(warmup)
                 self._reg_queue.put(("开始 Pro 试用订阅...", "info"))
                 try:
-                    loop.run_until_complete(
-                        self._reg_pro_trial_subscribe(result, loop)
+                    card_line = None
+                    card988_key = None
+                    if payment_mode == "custom_card":
+                        if not card_lines_cache:
+                            self._reg_queue.put(("支付卡信息已用完，跳过 Pro 订阅", "err"))
+                            return
+                        card_line = card_lines_cache[0]
+                    elif payment_mode == "card988":
+                        if not card988_keys_cache:
+                            self._reg_queue.put(("988 兑换 Key 已用完，跳过 Pro 订阅", "err"))
+                            return
+                        card988_key = card988_keys_cache[0]
+                    subscribed = loop.run_until_complete(
+                        self._reg_pro_trial_subscribe(result, loop, card_line=card_line, card988_key=card988_key)
                     )
+                    if subscribed:
+                        if payment_mode == "custom_card":
+                            card_lines_cache.pop(0)
+                        elif payment_mode == "card988":
+                            card988_keys_cache.pop(0)
                 except Exception as e:
                     err_str = str(e)
                     if "closed" in err_str.lower():
@@ -1568,65 +1681,71 @@ class App(tk.Tk):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                for attempt in range(1, MAX_RETRY + 1):
-                    if self._reg_cancel:
-                        self._reg_queue.put(("用户取消，停止重试", "warn"))
+                try:
+                    for attempt in range(1, MAX_RETRY + 1):
+                        if self._reg_cancel:
+                            self._reg_queue.put(("用户取消，停止重试", "warn"))
+                            break
+                        if attempt > 1:
+                            wait = random.randint(10, 30)
+                            self._reg_queue.put((f"等待 {wait}s 后开始第 {attempt}/{MAX_RETRY} 次注册...", "info"))
+                            time.sleep(wait)
+                        self._reg_queue.put((f"[{attempt}/{MAX_RETRY}] 注册线程已启动，正在初始化...", "info"))
+                        try:
+                            result = loop.run_until_complete(
+                                self._reg_async_main(headless, auto_login, skip_onboard, use_roxy=use_roxy)
+                            )
+                        except Exception as e:
+                            self._reg_queue.put((f"注册异常: {e}", "err"))
+                            self._reg_queue.put((_tb.format_exc(), "dbg"))
+                            continue
+
+                        if not result or not result.get("email"):
+                            self._reg_queue.put(("注册流程结束 (未获取到结果)", "err"))
+                            continue
+
+                        self._reg_queue.put((f"Email: {result['email']}", "highlight"))
+                        self._reg_queue.put((f"Password: {result['password']}", "highlight"))
+
+                        # 账号健康检测
+                        self._reg_queue.put(("正在检测账号状态...", "info"))
+                        status, reason = _check_account_health(result)
+
+                        if status == "banned":
+                            self._reg_queue.put((f"[-] {reason}, 不入库", "err"))
+                            if attempt < MAX_RETRY:
+                                self._reg_queue.put(("账号被封禁，将自动重新注册...", "warn"))
+                            continue
+
+                        if status == "no_trial":
+                            self._reg_queue.put((f"[-] {reason}", "warn"))
+                            if import_no_trial:
+                                self._reg_queue.put(("无试用但用户选择仍入库，执行入库并跳过订阅...", "info"))
+                                _do_import_and_subscribe(result, loop, allow_subscribe=False)
+                            else:
+                                self._reg_queue.put(("跳过入库 (可勾选'无试用仍入库'改变此行为)", "info"))
+                            if attempt < MAX_RETRY:
+                                self._reg_queue.put(("将自动重新注册以获取试用账号...", "warn"))
+                            continue
+
+                        # 账号正常
+                        is_incomplete = result.get("incomplete", False)
+                        if is_incomplete:
+                            self._reg_queue.put((f"[-] 注册未完成 ({result.get('failReason', '')}), 不入库", "err"))
+                            if attempt < MAX_RETRY:
+                                self._reg_queue.put(("将自动重新注册...", "warn"))
+                            continue
+                        self._reg_queue.put(("注册完成! 账号状态正常", "ok"))
+                        _do_import_and_subscribe(result, loop)
                         break
-                    if attempt > 1:
-                        wait = random.randint(10, 30)
-                        self._reg_queue.put((f"等待 {wait}s 后开始第 {attempt}/{MAX_RETRY} 次注册...", "info"))
-                        time.sleep(wait)
-                    self._reg_queue.put((f"[{attempt}/{MAX_RETRY}] 注册线程已启动，正在初始化...", "info"))
-                    try:
-                        result = loop.run_until_complete(
-                            self._reg_async_main(headless, auto_login, skip_onboard, use_roxy=use_roxy)
-                        )
-                    except Exception as e:
-                        self._reg_queue.put((f"注册异常: {e}", "err"))
-                        self._reg_queue.put((_tb.format_exc(), "dbg"))
-                        continue
-
-                    if not result or not result.get("email"):
-                        self._reg_queue.put(("注册流程结束 (未获取到结果)", "err"))
-                        continue
-
-                    self._reg_queue.put((f"Email: {result['email']}", "highlight"))
-                    self._reg_queue.put((f"Password: {result['password']}", "highlight"))
-
-                    # 账号健康检测
-                    self._reg_queue.put(("正在检测账号状态...", "info"))
-                    status, reason = _check_account_health(result)
-
-                    if status == "banned":
-                        self._reg_queue.put((f"[-] {reason}, 不入库", "err"))
-                        if attempt < MAX_RETRY:
-                            self._reg_queue.put(("账号被封禁，将自动重新注册...", "warn"))
-                        continue
-
-                    if status == "no_trial":
-                        self._reg_queue.put((f"[-] {reason}", "warn"))
-                        if import_no_trial:
-                            self._reg_queue.put(("无试用但用户选择仍入库，执行入库+订阅...", "info"))
-                            _do_import_and_subscribe(result, loop)
-                        else:
-                            self._reg_queue.put(("跳过入库 (可勾选'无试用仍入库'改变此行为)", "info"))
-                        if attempt < MAX_RETRY:
-                            self._reg_queue.put(("将自动重新注册以获取试用账号...", "warn"))
-                        continue
-
-                    # 账号正常
-                    is_incomplete = result.get("incomplete", False)
-                    if is_incomplete:
-                        self._reg_queue.put((f"[-] 注册未完成 ({result.get('failReason', '')}), 不入库", "err"))
-                        if attempt < MAX_RETRY:
-                            self._reg_queue.put(("将自动重新注册...", "warn"))
-                        continue
-                    self._reg_queue.put(("注册完成! 账号状态正常", "ok"))
-                    _do_import_and_subscribe(result, loop)
-                    break
-                else:
-                    self._reg_queue.put((f"已达最大重试次数 ({MAX_RETRY})，停止", "err"))
-                loop.close()
+                    else:
+                        self._reg_queue.put((f"已达最大重试次数 ({MAX_RETRY})，停止", "err"))
+                finally:
+                    if payment_mode == "custom_card":
+                        self.after(0, lambda lines=list(card_lines_cache): self._reg_replace_card_lines(lines))
+                    elif payment_mode == "card988":
+                        self.after(0, lambda keys=list(card988_keys_cache): self._reg_replace_card988_keys(keys))
+                    loop.close()
             except Exception as e:
                 self._reg_queue.put((f"注册异常: {e}", "err"))
                 try:
@@ -1707,6 +1826,48 @@ class App(tk.Tk):
         self._reg_cancel = True
         self._reg_log("用户请求停止...", "err")
 
+    def _reg_choose_card_file(self):
+        """选择一行一张支付卡信息的 TXT 文件。"""
+        path = filedialog.askopenfilename(
+            title="选择支付卡 TXT 文件",
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+        )
+        if path:
+            self._reg_card_file.set(path)
+
+    def _reg_load_card_lines(self) -> list[str]:
+        """从 TXT 文件或多行输入读取支付卡行。"""
+        file_path = self._reg_card_file.get().strip()
+        if file_path:
+            try:
+                text = Path(file_path).read_text(encoding="utf-8-sig")
+            except UnicodeDecodeError:
+                text = Path(file_path).read_text(encoding="gbk", errors="ignore")
+        else:
+            text = self._reg_card_lines_text.get("1.0", "end")
+        return [line.strip() for line in text.splitlines() if line.strip() and not line.strip().startswith("#")]
+
+    def _reg_replace_card_lines(self, lines: list[str]) -> None:
+        """用剩余支付卡行回写 TXT 文件或多行输入。"""
+        file_path = self._reg_card_file.get().strip()
+        if file_path:
+            Path(file_path).write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+        else:
+            self._reg_card_lines_text.delete("1.0", "end")
+            if lines:
+                self._reg_card_lines_text.insert("1.0", "\n".join(lines))
+
+    def _reg_load_card988_keys(self) -> list[str]:
+        """读取 988 兑换 Key，一行一个。"""
+        text = self._reg_card988_keys_text.get("1.0", "end")
+        return [line.strip() for line in text.splitlines() if line.strip() and not line.strip().startswith("#")]
+
+    def _reg_replace_card988_keys(self, keys: list[str]) -> None:
+        """回写未使用的 988 兑换 Key。"""
+        self._reg_card988_keys_text.delete("1.0", "end")
+        if keys:
+            self._reg_card988_keys_text.insert("1.0", "\n".join(keys))
+
     def _reg_pro_only(self):
         """跳过注册，直接用数据库中最新账号执行 Pro 试用订阅"""
         if self._reg_running:
@@ -1724,6 +1885,25 @@ class App(tk.Tk):
             from tkinter import messagebox
             messagebox.showerror("错误", f"Token 无效: {err}\n请先刷新或重新注册")
             return
+        payment_mode = self._reg_payment_mode.get()
+        card_line = None
+        card988_key = None
+        if payment_mode == "custom_card":
+            try:
+                card_lines = self._reg_load_card_lines()
+            except Exception as e:
+                messagebox.showerror("支付卡错误", f"读取支付卡信息失败: {e}")
+                return
+            if not card_lines:
+                messagebox.showwarning("提示", "请选择支付卡 TXT 文件，或在卡信息中填写至少一行")
+                return
+            card_line = card_lines[0]
+        elif payment_mode == "card988":
+            card988_keys = self._reg_load_card988_keys()
+            if not card988_keys:
+                messagebox.showwarning("提示", "请填写至少一个 988 兑换 Key")
+                return
+            card988_key = card988_keys[0]
 
         self._reg_running = True
         self._reg_cancel = False
@@ -1747,7 +1927,14 @@ class App(tk.Tk):
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 self._reg_queue.put(("开始 Pro 试用订阅...", "info"))
-                loop.run_until_complete(self._reg_pro_trial_subscribe(result, loop))
+                subscribed = loop.run_until_complete(
+                    self._reg_pro_trial_subscribe(result, loop, card_line=card_line, card988_key=card988_key)
+                )
+                if subscribed:
+                    if payment_mode == "custom_card":
+                        self.after(0, lambda: self._reg_replace_card_lines(card_lines[1:]))
+                    elif payment_mode == "card988":
+                        self.after(0, lambda: self._reg_replace_card988_keys(card988_keys[1:]))
                 loop.close()
             except Exception as e:
                 err_str = str(e)
@@ -1852,12 +2039,13 @@ class App(tk.Tk):
                 cancel_check=lambda: self._reg_cancel,
             )
 
-    async def _reg_pro_trial_subscribe(self, result, loop):
-        """注册完成后自动订阅 Pro 试用 (使用 EFunCard 虚拟信用卡)"""
+    async def _reg_pro_trial_subscribe(self, result, loop, card_line=None, card988_key=None):
+        """注册完成后自动订阅 Pro 试用。"""
         import kiro_subscribe
         import os as _os
-        from stripe_pay import auto_pay
+        from stripe_pay import auto_pay, auto_pay_with_card, auto_pay_with_card988, parse_card_line
 
+        log = self._reg_log
         # 确保 YesCaptcha key 可用
         cfg = load_config()
         yescaptcha_key = self._reg_yescaptcha_key.get().strip()
@@ -1868,18 +2056,29 @@ class App(tk.Tk):
 
         access_token = result.get("accessToken", "")
         profile_arn = FIXED_PROFILE_ARNS.get("BuilderId", "")
-        log = self._reg_log
+        payment_mode = self._reg_payment_mode.get()
         cdk_code = self._reg_cdk_code.get().strip()
+        card_info = None
 
-        if not cdk_code:
+        if payment_mode == "efuncard" and not cdk_code:
             log("未填写 CDK 码，跳过 Pro 试用订阅", "err")
-            return
+            return False
+        if payment_mode == "card988" and not card988_key:
+            log("未填写 988 兑换 Key，跳过 Pro 试用订阅", "err")
+            return False
+        if payment_mode == "custom_card":
+            try:
+                card_info = parse_card_line(card_line)
+                log(f"使用自定义支付卡: *{card_info['cardNumber'][-4:]}", "info")
+            except Exception as e:
+                log(f"支付卡信息无效: {e}", "err")
+                return False
 
         # Step 1: 查询可用套餐
         subs = kiro_subscribe.list_available_subscriptions(access_token, profile_arn, log=log)
         if not subs.get("ok"):
             log("无法获取订阅套餐列表", "err")
-            return
+            return False
 
         # 找到 KIRO_PRO 套餐
         plans = subs.get("plans", [])
@@ -1902,7 +2101,7 @@ class App(tk.Tk):
         )
         if not token_result.get("ok") or not token_result.get("url"):
             log("无法获取支付 URL", "err")
-            return
+            return False
 
         payment_url = token_result["url"]
         log(f"支付 URL: {payment_url[:80]}...", "info")
@@ -1915,18 +2114,27 @@ class App(tk.Tk):
             total_due = page_info.get("total_due_today", "unknown")
             log(f"今日应付: {total_due}", "info")
             if not is_free:
-                log(f"非 $0 试用 (今日应付: {total_due})，中止订阅，不消耗 CDK 卡", "err")
-                return
+                log(f"非 $0 试用 (今日应付: {total_due})，中止订阅，不消耗支付卡", "err")
+                return False
             log("确认为 $0 免费试用，继续自动支付...", "ok")
         else:
             log("无法获取页面金额（可能链接已失效），中止", "err")
-            return
+            return False
 
-        # Step 4: 使用 EFunCard + Stripe 自动支付
+        # Step 4: Stripe 自动支付
         captcha_cfg = {"yescaptcha_key": yescaptcha_key}
-        pay_result = await auto_pay(
-            payment_url, cdk_code, captcha_config=captcha_cfg, headless=True, log=log
-        )
+        if payment_mode == "custom_card":
+            pay_result = await auto_pay_with_card(
+                payment_url, card_info, captcha_config=captcha_cfg, headless=False, log=log
+            )
+        elif payment_mode == "card988":
+            pay_result = await auto_pay_with_card988(
+                payment_url, card988_key, captcha_config=captcha_cfg, headless=True, log=log
+            )
+        else:
+            pay_result = await auto_pay(
+                payment_url, cdk_code, captcha_config=captcha_cfg, headless=True, log=log
+            )
 
         if pay_result and pay_result.get("ok"):
             log("Pro 试用订阅成功!", "ok")
@@ -1943,11 +2151,13 @@ class App(tk.Tk):
                 self.after(0, self._load_accounts_from_db)
             except Exception:
                 pass
+            return True
         elif pay_result and pay_result.get("status") == "not_free_trial":
             log(f"此账号无免费试用资格: {pay_result.get('message', '')}", "err")
         else:
             reason = pay_result.get("message", str(pay_result)) if pay_result else "未知错误"
             log(f"Pro 试用订阅未完成: {reason}", "err")
+        return False
 
     # ─── Tab 4: 手动登录 ─────────────────────────────────────────────────
     def _build_tab_manual_login(self):
